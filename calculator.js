@@ -1,22 +1,36 @@
-// an array to store components of the first operand, such as feet and inches, each component is an object with the value and unit. for example [ { value: '5', unit: 'feet' }, { value: '6', unit: 'inches' } ]
-const operand1 = [];
-//similarly, an array to store components of the second operand
-const operand2 = [];
+/**
+ * this calculator does imperial unit calculation and conversions.
+ * when calculating, the operands are first converted to inches.
+ * you can combine feet and inches with meters, and do plus and minus with them, but you can not combine them and do multiply or divide
+ * 
+ */
 
-//a variable to store the current operator, such as +, -, *, or /
-let operator = null;
+const imperialCalculator = {
+    // an array to store components of the first operand, such as feet and inches, each component is an object with the value and unit. for example [ { value: '5', unit: 'feet' }, { value: '6', unit: 'inches' } ]
+    operand1: [],
+    //similarly, an array to store components of the second operand
+    operand2: [],
+    //a variable to store the current operator, such as +, -, *, or /
+    operator: null,
+    //an array to store the output of each calculation, which will be displayed in the textarea
+    output: []
+};
 
 //only run this if the script is being run in a browser environment
 if (typeof window !== 'undefined') {
+    //add an event listener to capture keyboard input for the calculator
     document.addEventListener('keydown', function(event) {
         //when the key is a number, a feet symbol, an inches symbol, 'm', a decimal point, an operator, or the Enter key, capture the input
-        if ((event.key >= '0' && event.key <= '9') || event.key === "'" || event.key === '"' || event.key === 'm' || event.key === '.' || ['+', '-', '*', '/'].includes(event.key) || event.key === 'Enter') {
-            if (event.key === 'Enter') {
+        if ((event.key >= '0' && event.key <= '9') || ['+', '-', '*', '/', "'", '"', 'm', '.', '='].includes(event.key) || event.key === 'Enter') {
+            if (event.key === 'Enter' || event.key === '=') {
                 //when the Enter key is pressed, calculate the result and display it in the textarea
-                const result = calculate();
-                document.getElementById('display').value += '\n' + result;
+                calculate();
             } else {
                 captureInput(event.key);
+                //display operand1, operator, and operand2 in the respective divs for debugging purposes
+                document.getElementById('operand1').textContent = operandToString(imperialCalculator.operand1);
+                document.getElementById('operator').textContent = imperialCalculator.operator || '';
+                document.getElementById('operand2').textContent = operandToString(imperialCalculator.operand2);
             }
         }
     });
@@ -25,49 +39,76 @@ if (typeof window !== 'undefined') {
 function captureInput(input) {
     for(let i = 0; i < input.length; i++) {
         const char = input[i];
-        if(!operator) { //if there is no operator, we are entering value for operand1
-            if(!operand1[operand1.length - 1]?.unit) { //if the last component of operand1 doesn't have a unit, we are still entering the value for the current component
-                //if operand1 doesn't have any component yet, create a new component with null value and unit, and capture the value for this component, otherwise capture the value for the last component
-                captureOperandValue(char, operand1[operand1.length - 1] || (operand1[operand1.length] = { value: null, unit: null }));
-            } else {
-                //if the last component of operand1 has a unit, we are capturing the next component
-                captureOperandValue(char, operand1[operand1.length] = { value: null, unit: null });
+
+        //the current component we are capturing value or units for, it can be the last component of operand1 or operand2 depending on whether we have captured an operator yet
+        const currentComponent = imperialCalculator.operator
+            ? imperialCalculator.operand2[imperialCalculator.operand2.length - 1]
+            : imperialCalculator.operand1[imperialCalculator.operand1.length - 1];
+
+        if(['+', '-', '*', '/'].includes(char)) { 
+            //we are entering an operator
+            if(imperialCalculator.operand2.length > 0) {
+                //if there is already an operator, we need to calculate the result of the current operands and operator before capturing the new operator
+                const result = calculate();
+                //capture the result as the new operand1
+                captureInput(result);
             }
-        } else {
-            //entering value for operand2
-            if(!operand2[operand2.length - 1]?.unit) { //if the last component of operand2 doesn't have a unit, we are still entering the value for the current component
-                //if operand2 doesn't have any component yet, create a new component with null value and unit, and capture the value for this component, otherwise capture the value for the last component
-                captureOperandValue(char, operand2[operand2.length - 1] || (operand2[operand2.length] = { value: null, unit: null }));
+
+            //capture the operator if there are no operator yet, or we don't have an operand2 yet, which means we can still change operator
+            imperialCalculator.operator = char;
+            continue;
+        } else if([`'`, `"`, 'm'].includes(char) && (i === 0 || input[i - 1] === ' ')) { 
+            //we are entering a unit
+            if (currentComponent && currentComponent.value) {
+                //set unit if we have a current component and it has a value, otherwise we can't determine which unit to set
+                currentComponent.unit = char === `'` ? 'feet' : char === `"` ? 'inches' : char === 'm' ? 'meters' : null;
+            } 
+        } else if(char === '=') {
+            //we are entering the equal sign, which means we want to calculate the result
+            const result = calculate();
+            //capture the result as the new operand1 for the next calculation
+            captureInput(result);
+        } else { 
+            //we are entering values
+            if(!currentComponent || currentComponent.unit) {
+                //if there is no current component, or the current component already has a unit, we need to create a new component for the new value
+                const newComponent = { value: null, unit: null };
+                capturecomponentValue(char, newComponent);
+                if (imperialCalculator.operator) {
+                    imperialCalculator.operand2.push(newComponent);
+                } else {
+                    imperialCalculator.operand1.push(newComponent);
+                }
             } else {
-                //if the last component of operand2 has a unit, we are capturing the next component
-                captureOperandValue(char, operand2[operand2.length] = { value: null, unit: null });
+                //capture value for the current component
+                capturecomponentValue(char, currentComponent);
             }
         }
     }
 }
 
 /**
- * 
+ *  append value or change unit for the current component based on the input char
  * @param {string} char -- a single character 
- * @param {{value: string|null, unit: string}} operand 
+ * @param {{value: string|null, unit: string}} component 
  */
-function captureOperandValue(char, operand) {
+function capturecomponentValue(char, component) {
     if (char >= '0' && char <= '9') {
         //if the char is a number, append it to the current value
-        operand.value = (operand.value || '') + char;
+        component.value = (component.value || '') + char;
     } else if (char === "'") {
         //if the char is a feet symbol, set the unit to feet
-        operand.unit = 'feet';
+        component.unit = 'feet';
     } else if (char === '"') {
         //if the char is an inches symbol, set the unit to inches
-        operand.unit = 'inches';
+        component.unit = 'inches';
     } else if (char === 'm') {
         //if the char is 'm' , set the unit to meters
-        operand.unit = 'meters';
+        component.unit = 'meters';
     } else if (char === '.') {
         //if the char is a decimal point
-        if (operand.unit === 'inches' && operand.value !== null && !operand.value.includes('.')) {
-            operand.value = (operand.value || '') + '.';
+        if (component.unit === 'inches' && component.value !== null && !component.value.includes('.')) { //only allow a single decimal point
+            component.value = (component.value || '') + '.';
         }
     }
 }
@@ -78,50 +119,100 @@ function captureOperandValue(char, operand) {
 function calculate(input) {
     //TODO: do the calculation with the captured operands and operator, and return the result as a string
 
-    return `1'2"`;
+    const result = `1'22"`;
+
+    //clear operands
+    imperialCalculator.operand1 = [];
+    imperialCalculator.operand2 = [];
+    imperialCalculator.operator = null;
+    imperialCalculator.output.push(result);
+    return result;
 }
 
 /**
- * @param {string} input - a string representing a feet and inches value, or just a number, such as 5'6", 5', 6", or 5.5
- * extract the feet and inches component from the input string and return an object with the feet, inches
- * if the input only contains a number, without any feet or inches symbol, return the number instead.
+ * turn an operand array back to a string for display, for example [ { value: '5', unit: 'feet' }, { value: '6', unit: 'inches' } ] will be turned back to "5' 6\""
+ * @param {[{value: string|null, unit:'feet'|'inches'|'meters'}]} operand 
  */
-function extractFeetInches(input) {
-    const regex = /([0-9.]+)(?:\s*'?\s*([0-9.]+)"?)?/;
-    const match = input.match(regex);
-
-    if (!match || !match[2]) {
-        //if regex didn't match or there is no feet or inches symbol, return the number directly
-        return parseFloat(input);
+function operandToString(operand) {
+    let result = '';
+    for (const component of operand) {
+        if (component.value !== null && component.unit) {
+            let unitSymbol = '';
+            switch (component.unit) { 
+                case 'feet':
+                    unitSymbol = "'";
+                    break;
+                case 'inches':
+                    unitSymbol = '"';
+                    break;
+                case 'meters':
+                    unitSymbol = 'm';
+                    break;
+            }
+            result += component.value + unitSymbol + ' ';
+        }
     }
-    return {
-        feet: parseInt(match[1]) || 0,
-        inches: parseInt(match[2]) || 0
-    };
+    return result.trim();
 }
 
 /**
- * convert a number in inches to an object with the feet and inches component
+ * convert a number in inches to an operand array with feet and inches, for example 66 inches will be converted to [ { value: '5', unit: 'feet' }, { value: '6', unit: 'inches' } ]
+ * @param {number} totalInches
  */
-function convertToFeetInches(totalInches) {
-    const inches = Math.round(totalInches % 12 * 10000) / 10000; //keep 4 decimal places for inches
+function inchesToOperand(totalInches) {
     const feet = Math.floor(totalInches / 12);
-    return {
-        feet: feet,
-        inches: inches
-    };
+    const inches = Math.round((totalInches % 12) * 10000) / 10000;
+    const operand = [];
+    if (feet > 0) {
+        operand.push({ value: feet.toString(), unit: 'feet' });
+    }
+    if (inches > 0) {
+        operand.push({ value: inches.toString(), unit: 'inches' });
+    }
+    if (operand.length === 0) {
+        operand.push({ value: '0', unit: 'inches' });
+    }
+    return operand;
 }
 
 /**
- * convert an operand object with the feet and inches component to a number in inches
+ * combine the components of an operand array to get the total value in inches, for example [ { value: '5', unit: 'feet' }, { value: '6', unit: 'inches' } ] will be converted to 66 inches
+ * meters will be converted to inches as well, 1 meter = 39.3701 inches, [ { value: '2', unit: 'meters' } ] will be converted to 78.7402 inches
+ * operand without a unit will remine as a number, for example [ { value: '5', unit: null } ] will be converted to 5
+ * @param {[{value: string|null, unit:'feet'|'inches'|'meters'}]} operand
  */
-function converToInches(operand) {
-    //if the operand is a number, return it directly
-    if (typeof operand === 'number') {
-        return operand;
+function aggrateOperand(operand) {
+    //special case: when we only have 2 components, and first component is in feets, but 2nd component doesn't have a unit, we can assume the 2nd component is in inches, for example [ { value: '5', unit: 'feet' }, { value: '6', unit: null } ] can be converted to 66 inches
+    if (operand.length === 2 && operand[0].unit === 'feet' && operand[1].unit === null) {
+        operand[1].unit = 'inches';
     }
 
-    return Math.round((operand.feet * 12 + operand.inches) * 10000) / 10000; //keep 4 decimal places for inches
+    //either all of the compoents should have units or none of them, we cannot combine united component with non-unit components, throw an error if that is the case
+    const hasUnit = operand.some(component => component.unit !== null);
+    const hasNonUnit = operand.some(component => component.unit === null);
+    if (hasUnit && hasNonUnit) {
+        throw new Error('Invalid operand: cannot combine components with units and without units');
+    }
+
+    let totalInches = 0;
+    for (const component of operand) {
+        if (component.value !== null && component.unit) {
+            switch (component.unit) {
+                case 'feet':
+                    totalInches += parseFloat(component.value) * 12;
+                    break;
+                case 'inches':
+                    totalInches += parseFloat(component.value);
+                    break;
+                case 'meters':
+                    totalInches += parseFloat(component.value) * 39.3701;
+                    break;
+            }
+        } else if (component.value !== null) {
+            totalInches += parseFloat(component.value);
+        }
+    }
+    return Math.round(totalInches * 10000) / 10000; //keep 4 decimal places for inches
 }
 
 exports.calculate = calculate;

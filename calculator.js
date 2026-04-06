@@ -179,14 +179,14 @@ class ImperialCalculator {
         return result;
     }
 
-/**
- * turn an operand array back to a string for display, for example [ { value: '5', unit: 'feet' }, { value: '6', unit: 'inches' } ] will be turned back to "5' 6\""
- * @param {[{value: string|null, unit:'feet'|'inches'|'meters'}]} operand 
- */
+    /**
+     * Format operand for in-progress capture display, including value-only components.
+     * @param {[{value: string|null, unit:'feet'|'inches'|'meters'|null}]} operand
+     */
     operandToString(operand) {
         let result = '';
         for (const component of operand) {
-            if (component.value !== null && component.unit) {
+            if (component.value !== null) {
                 let unitSymbol = '';
                 switch (component.unit) {
                     case 'feet':
@@ -198,6 +198,8 @@ class ImperialCalculator {
                     case 'meters':
                         unitSymbol = 'm';
                         break;
+                    default:
+                        unitSymbol = '';
                 }
                 result += component.value + unitSymbol + ' ';
             }
@@ -264,28 +266,6 @@ class ImperialCalculator {
         }
         return Math.round(totalInches * 10000) / 10000; //keep 4 decimal places for inches
     }
-}
-
-const imperialCalculator = new ImperialCalculator();
-
-//only run this if the script is being run in a browser environment
-if (typeof window !== 'undefined') {
-    //add an event listener to capture keyboard input for the calculator
-    document.addEventListener('keydown', function(event) {
-        //when the key is a number, a feet symbol, an inches symbol, 'm', a decimal point, an operator, or the Enter key, capture the input
-        if ((event.key >= '0' && event.key <= '9') || ['+', '-', '*', '/', "'", '"', 'm', '.', '='].includes(event.key) || event.key === 'Enter') {
-            if (event.key === 'Enter' || event.key === '=') {
-                //when the Enter key is pressed, calculate the result and display it in the textarea
-                imperialCalculator.calculate();
-            } else {
-                imperialCalculator.captureInput(event.key);
-                //display operand1, operator, and operand2 in the respective divs for debugging purposes
-                document.getElementById('operand1').textContent = imperialCalculator.operandToString(imperialCalculator.operand1);
-                document.getElementById('operator').textContent = imperialCalculator.operator || '';
-                document.getElementById('operand2').textContent = imperialCalculator.operandToString(imperialCalculator.operand2);
-            }
-        }
-    });
 }
 
 //only export the calculate function for testing purposes

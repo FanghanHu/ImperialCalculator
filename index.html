@@ -410,6 +410,27 @@
             }
         });
 
+        calculatorShell.addEventListener('paste', function(event) {
+            const clipboardData = event.clipboardData;
+            if (!clipboardData) {
+                return;
+            }
+
+            const clipboardTypes = Array.from(clipboardData.types || []);
+            if (!clipboardTypes.includes('text/plain')) {
+                return;
+            }
+
+            const pastedText = clipboardData.getData('text/plain');
+            if (pastedText.length > 100) {
+                return;
+            }
+            
+            event.preventDefault();
+            imperialCalculator.captureInput(pastedText);
+            renderCaptureState();
+        });
+
         document.querySelectorAll('[data-input]').forEach(function(button) {
             button.addEventListener('click', function() {
                 handleInputToken(button.dataset.input);

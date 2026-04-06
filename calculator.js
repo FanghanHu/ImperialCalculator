@@ -17,6 +17,8 @@ class ImperialCalculator {
         this.operand2 = [];
         //a variable to store the current operator, such as +, -, *, or /
         this.operator = null;
+        //the unit for the result, we will convert the result to this unit for display, it can be either 'inches' or 'meters', default to 'inches'
+        this.resultUnit = 'inches';
     }
 
     /**
@@ -161,6 +163,11 @@ class ImperialCalculator {
         if (this.operand1.some(component => component.unit !== null) || this.operand2.some(component => component.unit !== null)) {
             //if either operand has units, it means the result should be in imperial units, we will convert the result in inches back to feet and inches for display
             const resultOperand = this.inchesToOperand(calculationResult);
+
+            if (this.resultUnit === 'meters') {
+                this.toggleOperandUnits([resultOperand], 'meters'); //convert the result operand to meters if the result unit is set to meters
+            }
+
             result = this.operandToString(resultOperand);
         } else {
             //if both operands are just numbers without units, we will return the result as a number string
@@ -289,6 +296,36 @@ class ImperialCalculator {
                 this.handleBack();
             }
         }
+    }
+
+    /**
+     * Toggle unit-bearing components between feet, inches and meters.
+     * Unitless components are ignored.
+     */
+    toggleOperandUnits(operands, targetUnit) {
+        for(const operand of operands) {
+            if(operand.length === 0) {
+                continue; //skip if there is no component in the operand
+            }
+
+            if(operand.some(component => component.unit == null)) {
+                continue; //skip if there are any unitless components, we cannot toggle units for this operand
+            }
+
+            switch (targetUnit) {
+                case 'meters':
+                    const totalInches = this.aggrateOperand(operand);
+                    const totalMeters = Math.round((totalInches / 39.3701) * 10000) / 10000;
+                    operand.length = 0; //clear the operand array
+                    operand.push({ value: totalMeters.toString(), unit: 'meters' });
+                    break;
+                case 'inches':
+                    const totalInches2 = this.aggrateOperand(operand);
+                    operand.length = 0; //clear the operand array
+                    operand.push(...this.inchesToOperand(totalInches2)); //convert inches to feet and inches components and push to operand array
+                    break;
+            }  
+        }    
     }
 }
 

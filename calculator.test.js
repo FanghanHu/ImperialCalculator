@@ -82,3 +82,81 @@ describe('calculate function errors and exceptions', () => {
         expect(() => calculator.calculate('2m - 3')).toThrow('Invalid calculation: cannot do plus or minus operations with operands with units and without units');
     });
 });
+
+describe('toggleOperandUnits', () => {
+    test('converts imperial operand components to meters', () => {
+        const operand = [
+            { value: '1', unit: 'feet' },
+            { value: '6', unit: 'inches' }
+        ];
+
+        calculator.toggleOperandUnits([operand], 'meters');
+
+        expect(operand).toEqual([
+            { value: '0.4572', unit: 'meters' }
+        ]);
+    });
+
+    test('converts meters back to feet and inches', () => {
+        const operand = [
+            { value: '1', unit: 'meters' }
+        ];
+
+        calculator.toggleOperandUnits([operand], 'inches');
+
+        expect(operand).toEqual([
+            { value: '3', unit: 'feet' },
+            { value: '3.3701', unit: 'inches' }
+        ]);
+    });
+
+    test('ignores pure numbers when toggling units', () => {
+        const operand = [
+            { value: '12', unit: null }
+        ];
+
+        calculator.toggleOperandUnits([operand], 'meters');
+
+        expect(operand).toEqual([
+            { value: '12', unit: null }
+        ]);
+    });
+});
+
+describe('handleBack', () => {
+    test('removes unit before removing numeric value', () => {
+        calculator.captureInput("5'");
+
+        calculator.handleBack();
+
+        expect(calculator.operand1).toEqual([
+            { value: '5', unit: null }
+        ]);
+    });
+
+    test('removes operator when there is no second operand', () => {
+        calculator.captureInput("5' +");
+
+        calculator.handleBack();
+
+        expect(calculator.operator).toBeNull();
+        expect(calculator.operand1).toEqual([
+            { value: '5', unit: 'feet' }
+        ]);
+    });
+
+    test('removes empty trailing second operand recursively', () => {
+        calculator.operand1 = [{ value: '5', unit: 'feet' }];
+        calculator.operator = '+';
+        calculator.operand2 = [
+            { value: '2', unit: 'feet' },
+            { value: '', unit: null }
+        ];
+
+        calculator.handleBack();
+
+        expect(calculator.operand2).toEqual([
+            { value: '2', unit: null }
+        ]);
+    });
+});

@@ -89,6 +89,35 @@
             word-break: break-word;
         }
 
+        .expression-row {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .toggle-units-btn {
+            border: 1px solid #b8d8f6;
+            border-radius: 10px;
+            background: linear-gradient(145deg, #edf6ff, #dceeff);
+            color: #0f4f84;
+            font: inherit;
+            font-size: 0.82rem;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            padding: 8px 10px;
+            cursor: pointer;
+            transition: transform 0.12s ease, filter 0.2s ease;
+        }
+
+        .toggle-units-btn:hover {
+            filter: brightness(1.03);
+        }
+
+        .toggle-units-btn:active {
+            transform: translateY(1px) scale(0.99);
+        }
+
         .result-display {
             min-height: 26px;
             font-size: clamp(0.95rem, 2.2vw, 1.1rem);
@@ -253,8 +282,9 @@
             <div id="history-container">
                 <div id="history-display"></div>
             </div>
-            <div>
+            <div class="expression-row">
                 <div id="expressionDisplay" class="expression-display"></div>
+                <button class="toggle-units-btn" id="toggleUnitsButton" type="button" title="Toggle units (feet and inches &lt;-> meters)">ft&in/m</button>
             </div>
         </section>
 
@@ -308,6 +338,7 @@
 
         const calculatorShell = document.querySelector('.calculator-shell');
         const expressionDisplay = document.getElementById('expressionDisplay');
+        const toggleUnitsButton = document.getElementById('toggleUnitsButton');
 
         function getCapturedExpression() {
             const displayOperator = imperialCalculator.operator ? imperialCalculator.operator.replace('*', '×').replace('/', '÷') : '';
@@ -402,6 +433,15 @@
                 imperialCalculator.handleBack();
                 renderCaptureState();
             });
+        });
+
+        toggleUnitsButton.addEventListener('click', function() {
+            //toggle to meters if any of the operands has feet or inches, otherwise toggle to feet and inches, if no units, do nothing
+            const targetUnit = imperialCalculator.operand1.some(component => ['feet', 'inches'].includes(component.unit)) || imperialCalculator.operand2.some(component => ['feet', 'inches'].includes(component.unit)) ? 'meters' :
+            imperialCalculator.operand1.some(component => component.unit === 'meters') || imperialCalculator.operand2.some(component => component.unit === 'meters') ? 'inches' : '';
+            imperialCalculator.resultUnit = targetUnit; //set the target unit for displaying future results
+            imperialCalculator.toggleOperandUnits([imperialCalculator.operand1, imperialCalculator.operand2], targetUnit);
+            renderCaptureState();
         });
 
         renderCaptureState();

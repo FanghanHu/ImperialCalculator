@@ -1,8 +1,13 @@
 /**
  * this calculator does imperial unit calculation and conversions.
- * when calculating, the operands are first converted to inches.
- * you can combine feet and inches with meters, and do plus and minus with them, but you can not combine them and do multiply or divide
+ * when calculating, the operands are first converted to inches, then results are displayed in feet and inches.
  * 
+ * the units of the operands matter:
+ * imperial/metric units + or - imperial/metric units = imperial units
+ * imperial/metric units * or / number = imperial units
+ * number + or - or * or / number = number
+ * imperial/metric units + or - number = invalid calculation
+ * imperial/metric units * or / imperial/metric units = invalid calculation (unsupported, this requires tracking the power of the units, for example feet^2 or meter^3, which is not supported in this calculator)
  */
 
 const imperialCalculator = {
@@ -36,6 +41,9 @@ if (typeof window !== 'undefined') {
     });
 }
 
+/**
+ * @param {string} input -- calculation input string, for example "5' 6\" + 2' 3\"" 
+ */
 function captureInput(input) {
     for(let i = 0; i < input.length; i++) {
         const char = input[i];
@@ -68,6 +76,9 @@ function captureInput(input) {
             const result = calculate();
             //capture the result as the new operand1 for the next calculation
             captureInput(result);
+        } else if(char === ' '){
+            //ignore spaces
+            continue;
         } else { 
             //we are entering values
             if(!currentComponent || currentComponent.unit) {
@@ -107,7 +118,7 @@ function capturecomponentValue(char, component) {
         component.unit = 'meters';
     } else if (char === '.') {
         //if the char is a decimal point
-        if (component.unit === 'inches' && component.value !== null && !component.value.includes('.')) { //only allow a single decimal point
+        if ((component.unit === 'inches' || !component.unit) && component.value !== null && !component.value.includes('.')) { //only allow a single decimal point
             component.value = (component.value || '') + '.';
         }
     }
@@ -117,9 +128,70 @@ function capturecomponentValue(char, component) {
  * Calculate the result of the current input and display it in the textarea
  */
 function calculate(input) {
+    if(input) {
+        captureInput(input);
+    }
+    console.log('Calculating with operand1:', imperialCalculator.operand1, 'operator:', imperialCalculator.operator, 'operand2:', imperialCalculator.operand2);
     //TODO: do the calculation with the captured operands and operator, and return the result as a string
 
-    const result = `1'22"`;
+    if(imperialCalculator.operand1.length === 0 || imperialCalculator.operator === null || imperialCalculator.operand2.length === 0) {
+        throw new Error('Invalid calculation: missing operand or operator');
+    }
+    
+    if(
+        (imperialCalculator.operand1.some(component => component.unit !== null) && imperialCalculator.operand1.some(component => component.unit === null)) ||
+        (imperialCalculator.operand2.some(component => component.unit !== null) && imperialCalculator.operand2.some(component => component.unit === null))
+    ) {
+        throw new Error('Invalid calculation: cannot combine components with units and without units');
+    }
+
+    if(
+        (imperialCalculator.operator === '+' || imperialCalculator.operator === '-') && (
+            (imperialCalculator.operand1.some(component => component.unit !== null) && imperialCalculator.operand2.some(component => component.unit === null)) ||
+            (imperialCalculator.operand1.some(component => component.unit === null) && imperialCalculator.operand2.some(component => component.unit !== null))
+        )
+    ) {
+        throw new Error('Invalid calculation: cannot do plus or minus operations with operands with units and without units');
+    }
+
+    if(
+        (imperialCalculator.operator === '*' || imperialCalculator.operator === '/') && 
+        imperialCalculator.operand1.some(component => component.unit !== null) && 
+        imperialCalculator.operand2.some(component => component.unit !== null)
+    ) {
+        throw new Error('Not Supported: cannot do multiply or divide operations with two operands with units');
+    }
+
+    const total1 = aggrateOperand(imperialCalculator.operand1);
+    const total2 = aggrateOperand(imperialCalculator.operand2);
+    let calculationResult;
+    switch (imperialCalculator.operator) { //maybe avoid using eval()
+        case '+':
+            calculationResult = total1 + total2;
+            break;
+        case '-':
+            calculationResult = total1 - total2;
+            break;
+        case '*':
+            calculationResult = total1 * total2;
+            break;
+        case '/':
+            calculationResult = total1 / total2;
+            break;
+        default:
+            throw new Error('Invalid operator: ' + imperialCalculator.operator);
+    }
+
+    let result;
+
+    if(imperialCalculator.operand1.some(component => component.unit !== null) || imperialCalculator.operand2.some(component => component.unit !== null)) {
+        //if either operand has units, it means the result should be in imperial units, we will convert the result in inches back to feet and inches for display
+        const resultOperand = inchesToOperand(calculationResult);
+        result = operandToString(resultOperand);
+    } else {
+        //if both operands are just numbers without units, we will return the result as a number string
+        result = calculationResult.toString();
+    }
 
     //clear operands
     imperialCalculator.operand1 = [];
@@ -215,4 +287,7 @@ function aggrateOperand(operand) {
     return Math.round(totalInches * 10000) / 10000; //keep 4 decimal places for inches
 }
 
-exports.calculate = calculate;
+//only export the calculate function for testing purposes
+if (typeof window == 'undefined') {
+    exports.calculate = calculate;
+}

@@ -284,7 +284,7 @@
             </div>
             <div class="expression-row">
                 <div id="expressionDisplay" class="expression-display"></div>
-                <button class="toggle-units-btn" id="toggleUnitsButton" type="button" title="Toggle units (feet and inches &lt;-> meters)">ft&in/m</button>
+                <button class="toggle-units-btn" id="toggleUnitsButton" type="button" title="Toggle units (feet and inches &lt;-> meters)">ft&in</button>
             </div>
         </section>
 
@@ -352,6 +352,10 @@
         function renderCaptureState() {
             const text = getCapturedExpression();
             expressionDisplay.textContent = text || 'Start entering a calculation...';
+        }
+
+        function renderResultUnitLabel() {
+            toggleUnitsButton.textContent = imperialCalculator.resultUnit === 'meters' ? 'm' : 'ft&in';
         }
 
         function clearCalculator() {
@@ -463,9 +467,11 @@
             imperialCalculator.resultUnit = targetUnit; //set the target unit for displaying future results
             imperialCalculator.toggleOperandUnits([imperialCalculator.operand1, imperialCalculator.operand2], targetUnit);
             renderCaptureState();
+            renderResultUnitLabel();
         });
 
         renderCaptureState();
+        renderResultUnitLabel();
     </script>
 </body>
 </html>

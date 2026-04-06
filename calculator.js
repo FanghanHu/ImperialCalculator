@@ -17,8 +17,6 @@ class ImperialCalculator {
         this.operand2 = [];
         //a variable to store the current operator, such as +, -, *, or /
         this.operator = null;
-        //an array to store the output of each calculation, which will be displayed in the textarea
-        this.output = [];
     }
 
     /**
@@ -54,8 +52,6 @@ class ImperialCalculator {
             } else if (char === '=') {
                 //we are entering the equal sign, which means we want to calculate the result
                 const result = this.calculate();
-                //capture the result as the new operand1 for the next calculation
-                this.captureInput(result);
             } else if (char === ' ') {
                 //ignore spaces
                 continue;
@@ -175,7 +171,6 @@ class ImperialCalculator {
         this.operand1 = [];
         this.operand2 = [];
         this.operator = null;
-        this.output.push(result);
         return result;
     }
 
@@ -265,6 +260,35 @@ class ImperialCalculator {
             }
         }
         return Math.round(totalInches * 10000) / 10000; //keep 4 decimal places for inches
+    }
+
+    /**
+     * remove the last character from the current input, this is used for the backspace button
+     */
+    handleBack() {
+        if (this.operand2.length > 0) {
+            const lastComponent = this.operand2[this.operand2.length - 1];
+            if (lastComponent.unit) {
+                lastComponent.unit = null;
+            } else if (lastComponent.value) {
+                lastComponent.value = lastComponent.value.slice(0, -1);
+            } else {
+                this.operand2.pop();
+                this.handleBack(); //after popping the last component, we need to check the new last component in case we need to remove unit or value from it as well
+            }
+        } else if (this.operator) {
+            this.operator = null;
+        } else if (this.operand1.length > 0) {
+            const lastComponent = this.operand1[this.operand1.length - 1];
+            if (lastComponent.unit) {
+                lastComponent.unit = null;
+            } else if (lastComponent.value) {
+                lastComponent.value = lastComponent.value.slice(0, -1);
+            } else {
+                this.operand1.pop();
+                this.handleBack();
+            }
+        }
     }
 }
 

@@ -39,7 +39,7 @@
         }
 
         .calculator-shell {
-            width: min(940px, 100%);
+            width: min(540px, 100%);
             background: var(--panel);
             border-radius: 24px;
             box-shadow: var(--shadow);
@@ -123,20 +123,26 @@
 
         .num-grid {
             display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
+            grid-template-columns: repeat(3, 72px);
+            justify-content: center;
             gap: 8px;
         }
 
         .unit-grid,
         .operator-grid {
             display: grid;
+            justify-content: center;
             gap: 8px;
         }
 
         .key {
             border: 0;
             border-radius: 12px;
-            padding: 12px 10px;
+            width: 72px;
+            aspect-ratio: 1 / 1;
+            padding: 0;
+            display: grid;
+            place-items: center;
             font: inherit;
             font-size: 1rem;
             font-weight: 600;
@@ -175,6 +181,23 @@
         .key.clear {
             background: #eff2f8;
             color: #36445f;
+        }
+
+        .key.back {
+            background: #e9eef8;
+            color: #2f3e5c;
+            font-size: 1.1rem;
+        }
+
+        .key.clear-entry {
+            background: #ffe7e0;
+            color: #8b2e12;
+        }
+
+        .key.zero-wide {
+            grid-column: span 2;
+            width: 152px;
+            aspect-ratio: auto;
         }
 
         #display {
@@ -218,7 +241,7 @@
 	</style>
 </head>
 <body>
-    <main class="calculator-shell">
+    <main class="calculator-shell" tabindex="0">
         <header class="header">
             <div>
                 <h1 class="title">Imperial and Metric Calculator</h1>
@@ -237,8 +260,10 @@
 
         <section class="keypad-layout">
             <div class="pad-block">
-                <h2 class="pad-title">Numbers</h2>
                 <div class="num-grid">
+                    <button class="key clear-entry" data-action="clear-entry">CE</button>
+                    <button class="key clear" data-action="clear">C</button>
+                    <button class="key back" data-action="back" aria-label="Backspace">&#x2190;</button>
                     <button class="key number" data-input="7">7</button>
                     <button class="key number" data-input="8">8</button>
                     <button class="key number" data-input="9">9</button>
@@ -248,14 +273,12 @@
                     <button class="key number" data-input="1">1</button>
                     <button class="key number" data-input="2">2</button>
                     <button class="key number" data-input="3">3</button>
-                    <button class="key number" data-input="0">0</button>
+                    <button class="key number zero-wide" data-input="0">0</button>
                     <button class="key number" data-input=".">.</button>
-                    <button class="key clear" data-action="clear">C</button>
                 </div>
             </div>
 
             <div class="pad-block">
-                <h2 class="pad-title">Units</h2>
                 <div class="unit-grid">
                     <button class="key unit" data-input="'">ft '</button>
                     <button class="key unit" data-input='"'>in "</button>
@@ -264,12 +287,11 @@
             </div>
 
             <div class="pad-block">
-                <h2 class="pad-title">Operators</h2>
                 <div class="operator-grid">
                     <button class="key operator" data-input="+">+</button>
                     <button class="key operator" data-input="-">-</button>
-                    <button class="key operator" data-input="*">*</button>
-                    <button class="key operator" data-input="/">/</button>
+                    <button class="key operator" data-input="*">×</button>
+                    <button class="key operator" data-input="/">÷</button>
                     <button class="key equals" data-input="=">=</button>
                 </div>
             </div>
@@ -284,11 +306,14 @@
     <script>
         const imperialCalculator = new ImperialCalculator();
 
+        const calculatorShell = document.querySelector('.calculator-shell');
         const expressionDisplay = document.getElementById('expressionDisplay');
 
         function getCapturedExpression() {
+            const displayOperator = imperialCalculator.operator ? imperialCalculator.operator.replace('*', '×').replace('/', '÷') : '';
+
             const operand1Text = imperialCalculator.operandToString(imperialCalculator.operand1);
-            const operatorText = imperialCalculator.operator || '';
+            const operatorText = displayOperator || '';
             const operand2Text = imperialCalculator.operandToString(imperialCalculator.operand2);
             return `${operand1Text} ${operatorText} ${operand2Text}`.trim();
         }
@@ -303,6 +328,13 @@
             imperialCalculator.operand2 = [];
             imperialCalculator.operator = null;
             expressionDisplay.textContent = 'Start entering a calculation...';
+        }
+
+        function clearAll() {
+            clearCalculator();
+            imperialCalculator.output = [];
+            const historyDisplay = document.getElementById('history-display');
+            historyDisplay.innerHTML = '';
         }
 
         function appendHistory(message) {
@@ -320,6 +352,8 @@
                 try {
                     const capturedExpression = getCapturedExpression();
                     const result = imperialCalculator.calculate();
+                    //capture the result as the new operand1 for the next calculation
+                    imperialCalculator.captureInput(result);
                     expressionDisplay.textContent = result;
                     appendHistory(`${capturedExpression} = ${result}`);
                 } catch (error) {
@@ -332,12 +366,16 @@
             renderCaptureState();
         }
 
-        document.addEventListener('keydown', function(event) {
+        calculatorShell.addEventListener('keydown', function(event) {
             const validKeys = ['+', '-', '*', '/', "'", '"', 'm', '.', '='];
             const isDigit = event.key >= '0' && event.key <= '9';
             if (isDigit || validKeys.includes(event.key) || event.key === 'Enter') {
                 event.preventDefault();
                 handleInputToken(event.key === 'Enter' ? '=' : event.key);
+            } else if (event.key === 'Backspace') {
+                event.preventDefault();
+                imperialCalculator.handleBack();
+                renderCaptureState();
             }
         });
 
@@ -350,6 +388,19 @@
         document.querySelectorAll('[data-action="clear"]').forEach(function(button) {
             button.addEventListener('click', function() {
                 clearCalculator();
+            });
+        });
+
+        document.querySelectorAll('[data-action="clear-entry"]').forEach(function(button) {
+            button.addEventListener('click', function() {
+                clearAll();
+            });
+        });
+
+        document.querySelectorAll('[data-action="back"]').forEach(function(button) {
+            button.addEventListener('click', function() {
+                imperialCalculator.handleBack();
+                renderCaptureState();
             });
         });
 

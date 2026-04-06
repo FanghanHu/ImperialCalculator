@@ -78,11 +78,11 @@ class ImperialCalculator {
         }
     }
 
-/**
- *  append value or change unit for the current component based on the input char
- * @param {string} char -- a single character 
- * @param {{value: string|null, unit: string}} component 
- */
+    /**
+     *  append value or change unit for the current component based on the input char
+     * @param {string} char -- a single character 
+     * @param {{value: string|null, unit: string}} component 
+     */
     captureComponentValue(char, component) {
         if (char >= '0' && char <= '9') {
             //if the char is a number, append it to the current value
@@ -105,14 +105,14 @@ class ImperialCalculator {
         }
     }
 
-/**
- * Calculate the result of the current input and display it in the textarea
- */
+    /**
+     * Calculate the result of the current input and display it in the textarea
+     */
     calculate(input) {
         if (input) {
             this.captureInput(input);
         }
-        console.log('Calculating with operand1:', this.operand1, 'operator:', this.operator, 'operand2:', this.operand2);
+        // console.log('Calculating with operand1:', this.operand1, 'operator:', this.operator, 'operand2:', this.operand2);
 
         if (this.operand1.length === 0 || this.operator === null || this.operand2.length === 0) {
             throw new Error('Invalid calculation: missing operand or operator');
@@ -207,10 +207,10 @@ class ImperialCalculator {
         return result.trim();
     }
 
-/**
- * convert a number in inches to an operand array with feet and inches, for example 66 inches will be converted to [ { value: '5', unit: 'feet' }, { value: '6', unit: 'inches' } ]
- * @param {number} totalInches
- */
+    /**
+     * convert a number in inches to an operand array with feet and inches, for example 66 inches will be converted to [ { value: '5', unit: 'feet' }, { value: '6', unit: 'inches' } ]
+     * @param {number} totalInches
+     */
     inchesToOperand(totalInches) {
         const feet = Math.floor(totalInches / 12);
         const inches = Math.round((totalInches % 12) * 10000) / 10000;
@@ -227,12 +227,12 @@ class ImperialCalculator {
         return operand;
     }
 
-/**
- * combine the components of an operand array to get the total value in inches, for example [ { value: '5', unit: 'feet' }, { value: '6', unit: 'inches' } ] will be converted to 66 inches
- * meters will be converted to inches as well, 1 meter = 39.3701 inches, [ { value: '2', unit: 'meters' } ] will be converted to 78.7402 inches
- * operand without a unit will remine as a number, for example [ { value: '5', unit: null } ] will be converted to 5
- * @param {[{value: string|null, unit:'feet'|'inches'|'meters'}]} operand
- */
+    /**
+     * combine the components of an operand array to get the total value in inches, for example [ { value: '5', unit: 'feet' }, { value: '6', unit: 'inches' } ] will be converted to 66 inches
+     * meters will be converted to inches as well, 1 meter = 39.3701 inches, [ { value: '2', unit: 'meters' } ] will be converted to 78.7402 inches
+     * operand without a unit will remine as a number, for example [ { value: '5', unit: null } ] will be converted to 5
+     * @param {[{value: string|null, unit:'feet'|'inches'|'meters'}]} operand
+     */
     aggrateOperand(operand) {
         //special case: when we only have 2 components, and first component is in feets, but 2nd component doesn't have a unit, we can assume the 2nd component is in inches, for example [ { value: '5', unit: 'feet' }, { value: '6', unit: null } ] can be converted to 66 inches
         if (operand.length === 2 && operand[0].unit === 'feet' && operand[1].unit === null) {

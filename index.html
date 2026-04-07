@@ -332,8 +332,9 @@
         <div id="operand2" hidden></div>
     </main>
 
-	<script src="./calculator.js"></script>
-    <script>
+	<script type="module">
+        import ImperialCalculator from './calculator.js';
+
         const imperialCalculator = new ImperialCalculator();
 
         const calculatorShell = document.querySelector('.calculator-shell');

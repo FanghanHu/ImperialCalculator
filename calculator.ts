@@ -15,22 +15,36 @@
  * There will be operands with only the first component being negative (for example when user type it in), in which case the entire operand is considered negative.
  * There will also be operands with all its components being negative (when we parse a calculation result), in which case the entire operand is considered negative.
  */
+
+export type Unit = 'feet' | 'inches' | 'meters';
+export type Operator = '+' | '-' | '*' | '/';
+
+export interface Component {
+    value: string | null;
+    unit: Unit | null;
+}
+
 class ImperialCalculator {
+    // an array to store components of the first operand, such as feet and inches, each component is an object with the value and unit. for example [ { value: '5', unit: 'feet' }, { value: '6', unit: 'inches' } ]
+    operand1: Component[];
+    //similarly, an array to store components of the second operand
+    operand2: Component[];
+    //a variable to store the current operator, such as +, -, *, or /
+    operator: Operator | null;
+    //the unit for the result, we will convert the result to this unit for display, it can be either 'inches' or 'meters', default to 'inches'
+    resultUnit: Unit;
+
     constructor() {
-        // an array to store components of the first operand, such as feet and inches, each component is an object with the value and unit. for example [ { value: '5', unit: 'feet' }, { value: '6', unit: 'inches' } ]
         this.operand1 = [];
-        //similarly, an array to store components of the second operand
         this.operand2 = [];
-        //a variable to store the current operator, such as +, -, *, or /
         this.operator = null;
-        //the unit for the result, we will convert the result to this unit for display, it can be either 'inches' or 'meters', default to 'inches'
         this.resultUnit = 'inches';
     }
 
     /**
-     * @param {string} input -- calculation input string, for example "5' 6\" + 2' 3\""
+     * @param input -- calculation input string, for example "5' 6\" + 2' 3\""
      */
-    captureInput(input) {
+    captureInput(input: string): void {
         for (let i = 0; i < input.length; i++) {
             const char = input[i];
 
@@ -43,7 +57,7 @@ class ImperialCalculator {
                 if(!this.operand1?.[0]?.value && char === '-') {
                     //if the first operand is empty and the char is a minus sign, start capturing a negative value
                     if (!currentComponent) {
-                        const newComponent = { value: '-', unit: null };
+                        const newComponent: Component = { value: '-', unit: null };
                         this.operand1.push(newComponent);
                     } else {
                         currentComponent.value = '-' ;
@@ -60,7 +74,7 @@ class ImperialCalculator {
                 }
 
             //capture the operator if there are no operator yet, or we don't have an operand2 yet, which means we can still change operator
-                this.operator = char;
+                this.operator = char as Operator;
                 continue;
             } else if ([`'`, `"`, 'm'].includes(char) && (i === 0 || input[i - 1] === ' ')) {
                 //we are entering a unit
@@ -70,7 +84,7 @@ class ImperialCalculator {
                 }
             } else if (char === '=') {
                 //we are entering the equal sign, which means we want to calculate the result
-                const result = this.calculate();
+                this.calculate();
             } else if (char === ' ') {
                 //ignore spaces
                 continue;
@@ -78,7 +92,7 @@ class ImperialCalculator {
                 //we are entering values
                 if (!currentComponent || currentComponent.unit) {
                     //if there is no current component, or the current component already has a unit, we need to create a new component for the new value
-                    const newComponent = { value: null, unit: null };
+                    const newComponent: Component = { value: null, unit: null };
                     this.captureComponentValue(char, newComponent);
                     if (this.operator) {
                         this.operand2.push(newComponent);
@@ -95,10 +109,10 @@ class ImperialCalculator {
 
     /**
      *  append value or change unit for the current component based on the input char
-     * @param {string} char -- a single character 
-     * @param {{value: string|null, unit: string}} component 
+     * @param char -- a single character
+     * @param component
      */
-    captureComponentValue(char, component) {
+    captureComponentValue(char: string, component: Component): void {
         if (char >= '0' && char <= '9') {
             //if the char is a number, append it to the current value
             component.value = (component.value || '') + char;
@@ -123,7 +137,7 @@ class ImperialCalculator {
     /**
      * Calculate the result of the current input and display it in the textarea
      */
-    calculate(input) {
+    calculate(input?: string): string {
         if (input) {
             this.captureInput(input);
         }
@@ -158,7 +172,7 @@ class ImperialCalculator {
 
         const total1 = this.aggrateOperand(this.operand1);
         const total2 = this.aggrateOperand(this.operand2);
-        let calculationResult;
+        let calculationResult: number;
         switch (this.operator) {
             case '+':
                 calculationResult = total1 + total2;
@@ -176,7 +190,7 @@ class ImperialCalculator {
                 throw new Error('Invalid operator: ' + this.operator);
         }
 
-        let result;
+        let result: string;
         if (this.operand1.some(component => component.unit !== null) || this.operand2.some(component => component.unit !== null)) {
             //if either operand has units, it means the result should be in imperial units, we will convert the result in inches back to feet and inches for display
             const resultOperand = this.inchesToOperand(calculationResult);
@@ -200,9 +214,8 @@ class ImperialCalculator {
 
     /**
      * Format operand for in-progress capture display, including value-only components.
-     * @param {[{value: string|null, unit:'feet'|'inches'|'meters'|null}]} operand
      */
-    operandToString(operand) {
+    operandToString(operand: Component[]): string {
         let result = '';
         for (const component of operand) {
             if (component.value !== null) {
@@ -230,15 +243,14 @@ class ImperialCalculator {
     /**
      * convert a number in inches to an operand array with feet and inches, for example 66 inches will be converted to [ { value: '5', unit: 'feet' }, { value: '6', unit: 'inches' } ]
      * supports negative numbers, for example -66 inches will be converted to [ { value: '-5', unit: 'feet' }, { value: '-6', unit: 'inches' } ]
-     * @param {number} totalInches
      */
-    inchesToOperand(totalInches) {
+    inchesToOperand(totalInches: number): Component[] {
         const isNegative = totalInches < 0;
         const absTotalInches = Math.abs(totalInches);
         
         const feet = Math.floor(absTotalInches / 12);
         const inches = Math.round((absTotalInches % 12) * 10000) / 10000;
-        const operand = [];
+        const operand: Component[] = [];
         
         if (feet > 0) {
             operand.push({ value: (isNegative ? -feet : feet).toString(), unit: 'feet' });
@@ -256,9 +268,8 @@ class ImperialCalculator {
      * combine the components of an operand array to get the total value in inches, for example [ { value: '5', unit: 'feet' }, { value: '6', unit: 'inches' } ] will be converted to 66 inches
      * meters will be converted to inches as well, 1 meter = 39.3701 inches, [ { value: '2', unit: 'meters' } ] will be converted to 78.7402 inches
      * operand without a unit will remine as a number, for example [ { value: '5', unit: null } ] will be converted to 5
-     * @param {[{value: string|null, unit:'feet'|'inches'|'meters'}]} operand
      */
-    aggrateOperand(operand) {
+    aggrateOperand(operand: Component[]): number {
         //special case: when we only have 2 components, and first component is in feets, but 2nd component doesn't have a unit, we can assume the 2nd component is in inches, for example [ { value: '5', unit: 'feet' }, { value: '6', unit: null } ] can be converted to 66 inches
         if (operand.length === 2 && operand[0].unit === 'feet' && operand[1].unit === null) {
             operand[1].unit = 'inches';
@@ -302,7 +313,7 @@ class ImperialCalculator {
     /**
      * remove the last character from the current input, this is used for the backspace button
      */
-    handleBack() {
+    handleBack(): void {
         if (this.operand2.length > 0) {
             const lastComponent = this.operand2[this.operand2.length - 1];
             if (lastComponent.unit) {
@@ -332,7 +343,7 @@ class ImperialCalculator {
      * Toggle unit-bearing components between feet, inches and meters.
      * Unitless components are ignored.
      */
-    toggleOperandUnits(operands, targetUnit) {
+    toggleOperandUnits(operands: Component[][], targetUnit: Unit): void {
         for(const operand of operands) {
             if(operand.length === 0) {
                 continue; //skip if there is no component in the operand
@@ -345,11 +356,12 @@ class ImperialCalculator {
             const totalInches = this.aggrateOperand(operand);
 
             switch (targetUnit) {
-                case 'meters':
+                case 'meters': {
                     const totalMeters = Math.round((totalInches / 39.3701) * 10000) / 10000;
                     operand.length = 0; //clear the operand array
                     operand.push({ value: totalMeters.toString(), unit: 'meters' });
                     break;
+                }
                 case 'inches':
                     operand.length = 0; //clear the operand array
                     operand.push(...this.inchesToOperand(totalInches)); //convert inches to feet and inches components and push to operand array
@@ -359,7 +371,4 @@ class ImperialCalculator {
     }
 }
 
-//only export the calculate function for testing purposes
-if (typeof window == 'undefined') {
-    exports.ImperialCalculator = ImperialCalculator;
-}
+export default ImperialCalculator;

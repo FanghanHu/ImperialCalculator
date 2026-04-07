@@ -1,9 +1,9 @@
-// run tests with npx jest calculator.test.js --runInBand --config "{}"
-let calculator;
+import ImperialCalculator, { Component } from "./calculator.ts";
+
+let calculator: ImperialCalculator;
 
 beforeEach(() => {
     jest.resetModules();
-    const { ImperialCalculator } = require('./calculator.js');
     calculator = new ImperialCalculator();
 });
 
@@ -85,7 +85,7 @@ describe('calculate function errors and exceptions', () => {
 
 describe('toggleOperandUnits', () => {
     test('converts imperial operand components to meters', () => {
-        const operand = [
+        const operand:Component[] = [
             { value: '1', unit: 'feet' },
             { value: '6', unit: 'inches' }
         ];
@@ -98,7 +98,7 @@ describe('toggleOperandUnits', () => {
     });
 
     test('converts meters back to feet and inches', () => {
-        const operand = [
+        const operand:Component[] = [
             { value: '1', unit: 'meters' }
         ];
 

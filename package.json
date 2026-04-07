@@ -1,0 +1,20 @@
+{
+  "name": "imperialcalculator",
+  "version": "1.0.0",
+  "description": "A simple calculator to calculate and convert with feet, inches and meters.",
+  "main": "calculator.ts",
+  "scripts": {
+    "test": "jest --runInBand",
+    "build": "npm run clean && tsc -p tsconfig.json && node -e \"const fs=require('fs'); fs.mkdirSync('dist',{recursive:true}); fs.copyFileSync('index.html','dist/index.html');\"",
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\""
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "jest": "^30.3.0",
+    "ts-jest": "^29.4.9",
+    "typescript": "^6.0.2"
+  }
+}

@@ -1,4 +1,4 @@
-import ImperialCalculator, { Component } from "./calculator.ts";
+import ImperialCalculator, { Component } from "./calculator";
 
 let calculator: ImperialCalculator;
 

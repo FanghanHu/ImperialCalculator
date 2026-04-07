@@ -383,7 +383,8 @@
         }
 
         function handleInputToken(token) {
-            if (token === '=') {
+            if (token === '=' || ['+', '-', '*', '/'].includes(token) && imperialCalculator.operand1.length && imperialCalculator.operand2.length && imperialCalculator.operator) {
+                //calculate when the input is '=', or when the operator and operands are ready, and the user tries to put in another operator
                 try {
                     const capturedExpression = getCapturedExpression();
                     const result = imperialCalculator.calculate();
@@ -394,7 +395,11 @@
                 } catch (error) {
                     appendHistory(`Error: ${error.message}`);
                 }
-                return;
+
+                if(token === '=') {
+                    //no need to capture input if the token is '='
+                    return;
+                }
             }
 
             imperialCalculator.captureInput(token);

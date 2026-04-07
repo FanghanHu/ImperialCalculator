@@ -1,6 +1,7 @@
 /**
  * #this calculator does imperial unit calculation and conversions.  
  * when calculating, the operands are first converted to inches, then results are displayed in feet and inches.
+ * values are rounded to four decimal places when converted between units.
  * 
  * ### the units of the operands matter:
  * imperial/metric units + or - imperial/metric units = imperial units  
@@ -8,6 +9,11 @@
  * number + or - or * or / number = number  
  * imperial/metric units + or - number = invalid calculation  
  * imperial/metric units * or / imperial/metric units = invalid calculation (unsupported, this requires tracking the power of the units, for example feet^2 or meter^3, which is not supported in this calculator)  
+ * 
+ * Note on negative values:
+ * If the first component of an operand has a negative value, the entire operand is considered negative.
+ * There will be operands with only the first component being negative (for example when user type it in), in which case the entire operand is considered negative.
+ * There will also be operands with all its components being negative (when we parse a calculation result), in which case the entire operand is considered negative.
  */
 class ImperialCalculator {
     constructor() {
@@ -34,6 +40,17 @@ class ImperialCalculator {
                 : this.operand1[this.operand1.length - 1];
 
             if (['+', '-', '*', '/'].includes(char)) {
+                if(!this.operand1?.[0]?.value && char === '-') {
+                    //if the first operand is empty and the char is a minus sign, start capturing a negative value
+                    if (!currentComponent) {
+                        const newComponent = { value: '-', unit: null };
+                        this.operand1.push(newComponent);
+                    } else {
+                        currentComponent.value = '-' ;
+                    }
+                    continue;
+                }
+
                 //we are entering an operator
                 if (this.operand2.length > 0) {
                     //if there is already an operator, we need to calculate the result of the current operands and operator before capturing the new operator
@@ -203,7 +220,8 @@ class ImperialCalculator {
                     default:
                         unitSymbol = '';
                 }
-                result += component.value + unitSymbol + ' ';
+                // only render a single '-' in front of the result if the value is negative
+                result += (result && component.value.startsWith('-') ? component.value.substring(1) : component.value) + unitSymbol + ' ';
             }
         }
         return result.trim();
@@ -211,17 +229,22 @@ class ImperialCalculator {
 
     /**
      * convert a number in inches to an operand array with feet and inches, for example 66 inches will be converted to [ { value: '5', unit: 'feet' }, { value: '6', unit: 'inches' } ]
+     * supports negative numbers, for example -66 inches will be converted to [ { value: '-5', unit: 'feet' }, { value: '-6', unit: 'inches' } ]
      * @param {number} totalInches
      */
     inchesToOperand(totalInches) {
-        const feet = Math.floor(totalInches / 12);
-        const inches = Math.round((totalInches % 12) * 10000) / 10000;
+        const isNegative = totalInches < 0;
+        const absTotalInches = Math.abs(totalInches);
+        
+        const feet = Math.floor(absTotalInches / 12);
+        const inches = Math.round((absTotalInches % 12) * 10000) / 10000;
         const operand = [];
+        
         if (feet > 0) {
-            operand.push({ value: feet.toString(), unit: 'feet' });
+            operand.push({ value: (isNegative ? -feet : feet).toString(), unit: 'feet' });
         }
         if (inches > 0) {
-            operand.push({ value: inches.toString(), unit: 'inches' });
+            operand.push({ value: (isNegative ? -inches : inches).toString(), unit: 'inches' });
         }
         if (operand.length === 0) {
             operand.push({ value: '0', unit: 'inches' });
@@ -248,23 +271,30 @@ class ImperialCalculator {
             throw new Error('Invalid operand: cannot combine components with units and without units');
         }
 
+        //if the first component is negative, the entire operand is considered negative
+        const isNegative = operand?.[0]?.value?.startsWith('-');
+
         let totalInches = 0;
         for (const component of operand) {
             if (component.value !== null && component.unit) {
                 switch (component.unit) {
                     case 'feet':
-                        totalInches += parseFloat(component.value) * 12;
+                        totalInches += Math.abs(parseFloat(component.value) * 12);
                         break;
                     case 'inches':
-                        totalInches += parseFloat(component.value);
+                        totalInches += Math.abs(parseFloat(component.value));
                         break;
                     case 'meters':
-                        totalInches += parseFloat(component.value) * 39.3701;
+                        totalInches += Math.abs(parseFloat(component.value) * 39.3701);
                         break;
                 }
             } else if (component.value !== null) {
-                totalInches += parseFloat(component.value);
+                totalInches += Math.abs(parseFloat(component.value));
             }
+        }
+
+        if (isNegative) {
+            totalInches = -totalInches;
         }
         return Math.round(totalInches * 10000) / 10000; //keep 4 decimal places for inches
     }
@@ -312,17 +342,17 @@ class ImperialCalculator {
                 continue; //skip if there are any unitless components, we cannot toggle units for this operand
             }
 
+            const totalInches = this.aggrateOperand(operand);
+
             switch (targetUnit) {
                 case 'meters':
-                    const totalInches = this.aggrateOperand(operand);
                     const totalMeters = Math.round((totalInches / 39.3701) * 10000) / 10000;
                     operand.length = 0; //clear the operand array
                     operand.push({ value: totalMeters.toString(), unit: 'meters' });
                     break;
                 case 'inches':
-                    const totalInches2 = this.aggrateOperand(operand);
                     operand.length = 0; //clear the operand array
-                    operand.push(...this.inchesToOperand(totalInches2)); //convert inches to feet and inches components and push to operand array
+                    operand.push(...this.inchesToOperand(totalInches)); //convert inches to feet and inches components and push to operand array
                     break;
             }  
         }    

@@ -160,3 +160,37 @@ describe('handleBack', () => {
         ]);
     });
 });
+
+describe('negative values', () => {
+    test('adds negative imperial values', () => {
+        expect(calculator.calculate("-5' 6\" - 2' 3\"")).toBe("-7' 9\"");
+    });
+
+    test('subtracts negative imperial values', () => {
+        expect(calculator.calculate("-10' 6\" + 2' 3\"")).toBe("-8' 3\"");
+    });
+
+    test('multiplies negative imperial values by a negative number', () => {
+        expect(calculator.calculate("-2' 6\" * 2")).toBe("-5'");
+    });
+
+    test('performs operations with negative metric values', () => {
+        expect(calculator.calculate('-2m - 1m')).toBe("-9' 10.1103\"");
+    });
+
+    test('adds negative imperial and negative metric operands together', () => {
+        expect(calculator.calculate("-1' - 1m")).toBe("-4' 3.3701\"");
+    });
+
+    test('performs operations with negative unitless numbers', () => {
+        expect(calculator.calculate("-5 - 3")).toBe("-8");
+    });
+
+    test('multiplies negative unitless numbers', () => {
+        expect(calculator.calculate("-5 * 2")).toBe("-10");
+    });
+
+    test('divides negative imperial by negative number', () => {
+        expect(calculator.calculate("-10' 0\" / 2")).toBe("-5'");
+    });
+});

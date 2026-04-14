@@ -390,8 +390,10 @@
 
             const currentComponent = imperialCalculator.operator ? imperialCalculator.operand2[imperialCalculator.operand2.length - 1] : imperialCalculator.operand1[imperialCalculator.operand1.length - 1];
             
-            currentComponent.value = '' + Math.round((Math.floor(parseFloat(currentComponent.value)) + fractionValue) * 10000) / 10000;
-            renderCaptureState();
+            if(currentComponent) {
+                currentComponent.value = '' + Math.round((Math.floor(parseFloat(currentComponent.value)) + fractionValue) * 10000) / 10000;
+                renderCaptureState();
+            }
         }
 
         function getCapturedExpression() {

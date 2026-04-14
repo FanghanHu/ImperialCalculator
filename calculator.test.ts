@@ -74,7 +74,7 @@ describe('calculate function', () => {
     test('convert feet and inches with exponents', () => {
         expect(calculator.calculate('200"^2 * 1')).toBe(`1' 56"^2`);
         expect(calculator.calculate('20000"^3 * 1')).toBe(`11' 992"^3`);
-        expect(calculator.calculate('5m^2 * 1')).toBe(`1' 52.8505"^2`);
+        expect(calculator.calculate('5m^2 * 1')).toBe(`53' 118.0239"^2`);
     });
 });
 

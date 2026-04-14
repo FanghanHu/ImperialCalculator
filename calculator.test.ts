@@ -51,6 +51,31 @@ describe('calculate function', () => {
     test('adds imperial and metric operands together', () => {
         expect(calculator.calculate("1' + 1m")).toBe("4' 3.3701\"");
     });
+
+    test('add and minus operands with exponents', () => {
+        expect(calculator.calculate("1'^2 + 1'^2")).toBe("2'^2");
+        expect(calculator.calculate("2'^2 - 1'^2")).toBe("1'^2");
+    });
+    
+    test('multiply and divide operands with exponents', () => {
+        expect(calculator.calculate("1'^2 * 1'^2")).toBe("1'^4");
+        expect(calculator.calculate("2'^4 / 1'^2")).toBe("2'^2");
+    });
+
+    test('divide two operands into 0 exponent should remove the unit', () => {
+        expect(calculator.calculate("2'^2 / 1'^2")).toBe("2");
+        expect(calculator.calculate("2' / 1'")).toBe("2");
+    });
+
+    test('divide two operands into 1 exponent should remove the exponent', () => {
+        expect(calculator.calculate("2'^3 / 1'^2")).toBe("2'");
+    });
+
+    test('convert feet and inches with exponents', () => {
+        expect(calculator.calculate('200"^2 * 1')).toBe(`1' 56"^2`);
+        expect(calculator.calculate('20000"^3 * 1')).toBe(`11' 992"^3`);
+        expect(calculator.calculate('5m^2 * 1')).toBe(`1' 52.8505"^2`);
+    });
 });
 
 describe('calculate function errors and exceptions', () => {
@@ -66,13 +91,13 @@ describe('calculate function errors and exceptions', () => {
         expect(() => calculator.calculate("5' + 3")).toThrow('Invalid calculation: cannot do plus or minus operations with operands with units and without units');
     });
 
-    test('throws for multiply with two unit operands', () => {
-        expect(() => calculator.calculate("5' * 2'")).toThrow('Not Supported: cannot do multiply or divide operations with two operands with units');
+    test('supports multiply with two unit operands', () => {
+        expect(calculator.calculate("5' * 2'")).toBe("10'^2");
     });
 
-    test('throws for divide with two unit operands', () => {
-        expect(() => calculator.calculate("12\" / 3\"")).toThrow('Not Supported: cannot do multiply or divide operations with two operands with units');
-    });
+    // test('throws for divide with two unit operands', () => {
+    //     expect(() => calculator.calculate("12\" / 3\"")).toThrow('Not Supported: cannot do multiply or divide operations with two operands with units');
+    // });
 
     test('throws for plus with meters and unitless operand', () => {
         expect(() => calculator.calculate('2m + 3')).toThrow('Invalid calculation: cannot do plus or minus operations with operands with units and without units');
@@ -81,9 +106,21 @@ describe('calculate function errors and exceptions', () => {
     test('throws for minus with meters and unitless operand', () => {
         expect(() => calculator.calculate('2m - 3')).toThrow('Invalid calculation: cannot do plus or minus operations with operands with units and without units');
     });
+
+    test('throws for plus and minus with mixed power', () => {
+        expect(() => calculator.calculate('2m^2 - 1m^3')).toThrow('Invalid calculation: cannot do plus or minus operations with operands with different exponents');
+    });
+
+    test('throws for divide into negative power', () => {
+        expect(() => calculator.calculate('2m^2 / 1m^3')).toThrow('Not Supported: cannot do divide operations resulting in a negative exponent');
+    });
+
+    test('throws for divide into negative power', () => {
+        expect(() => calculator.calculate('2^2 / 1^2')).toThrow('Not Supported: cannot process unitless numbers with exponents');
+    });
 });
 
-describe('toggleOperandUnits', () => {
+describe('Unit conversions', () => {
     test('converts imperial operand components to meters', () => {
         const operand:Component[] = [
             { value: '1', unit: 'feet' },
@@ -123,7 +160,7 @@ describe('toggleOperandUnits', () => {
     });
 });
 
-describe('handleBack', () => {
+describe('Input capture', () => {
     test('removes unit before removing numeric value', () => {
         calculator.captureInput("5'");
 
@@ -157,6 +194,57 @@ describe('handleBack', () => {
 
         expect(calculator.operand2).toEqual([
             { value: '2', unit: null }
+        ]);
+    });
+
+    test('capture exponent input one character at a time', () => {
+        calculator.captureInput("5");
+        calculator.captureInput("'");
+        calculator.captureInput("^");
+        calculator.captureInput("2");
+
+        expect(calculator.operand1).toEqual([
+            { value: '5', unit: 'feet', exponent: '2' }
+        ]);
+    });
+
+    test('capture exponent input with multiple characters', () => {
+        calculator.captureInput("5");
+        calculator.captureInput("'");
+        calculator.captureInput("^");
+        calculator.captureInput("1");
+        calculator.captureInput("0");
+
+        expect(calculator.operand1).toEqual([
+            { value: '5', unit: 'feet', exponent: '10' }
+        ]);
+    });
+
+    test('capture more inputs after an exponent', () => {
+        calculator.captureInput("5'^2");
+        calculator.captureInput("+");
+        calculator.captureInput("12");
+        calculator.captureInput("'");
+        calculator.captureInput("^");
+        calculator.captureInput("2");
+
+        expect(calculator.operand1).toEqual([
+            { value: '5', unit: 'feet', exponent: '2' }
+        ]);
+        expect(calculator.operator).toBe('+');
+        expect(calculator.operand2).toEqual([
+            { value: '12', unit: 'feet', exponent: '2' }
+        ]);
+    });
+
+    test('toggle unit when entering an exponent', () => {
+        calculator.captureInput("5'");
+        calculator.captureInput("^");
+        calculator.captureInput("2");
+        calculator.captureInput("m");
+
+        expect(calculator.operand1).toEqual([
+            { value: '5', unit: 'meters', exponent: '2' }
         ]);
     });
 });

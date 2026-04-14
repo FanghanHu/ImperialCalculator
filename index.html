@@ -337,6 +337,8 @@
 
         const imperialCalculator = new ImperialCalculator();
 
+        window.imperialCalculator = imperialCalculator; //expose the calculator instance for testing and debugging
+
         const calculatorShell = document.querySelector('.calculator-shell');
         const expressionDisplay = document.getElementById('expressionDisplay');
         const toggleUnitsButton = document.getElementById('toggleUnitsButton');
@@ -408,7 +410,7 @@
         }
 
         calculatorShell.addEventListener('keydown', function(event) {
-            const validKeys = ['+', '-', '*', '/', "'", '"', 'm', '.', '='];
+            const validKeys = ['+', '-', '*', '/', "'", '"', 'm', '.', '=', '^'];
             const isDigit = event.key >= '0' && event.key <= '9';
             if (isDigit || validKeys.includes(event.key) || event.key === 'Enter') {
                 event.preventDefault();

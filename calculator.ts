@@ -22,7 +22,11 @@ export type Operator = '+' | '-' | '*' | '/';
 export interface Component {
     value: string | null;
     unit: Unit | null;
+    exponent?: string | null;
 }
+
+const METER_TO_INCH = 39.3701;
+const FEET_TO_INCH = 12;
 
 class ImperialCalculator {
     // an array to store components of the first operand, such as feet and inches, each component is an object with the value and unit. for example [ { value: '5', unit: 'feet' }, { value: '6', unit: 'inches' } ]
@@ -48,10 +52,27 @@ class ImperialCalculator {
         for (let i = 0; i < input.length; i++) {
             const char = input[i];
 
-        //the current component we are capturing value or units for, it can be the last component of operand1 or operand2 depending on whether we have captured an operator yet
+            //the current component we are capturing value or units for, it can be the last component of operand1 or operand2 depending on whether we have captured an operator yet
             const currentComponent = this.operator
                 ? this.operand2[this.operand2.length - 1]
                 : this.operand1[this.operand1.length - 1];
+
+            const activeOperand = this.operator ? this.operand2 : this.operand1;
+
+            if (char === '^') {
+                if (activeOperand.length > 0) {
+                    // Initialize exponent to '' to mark that we are in exponent-capture mode.
+                    // Subsequent digit characters (one at a time or in a batch) will append to it.
+                    activeOperand[0].exponent = activeOperand[0].exponent ?? '';
+
+                    // Consume any exponent digits that immediately follow in the current string.
+                    while (i + 1 < input.length && input[i + 1] >= '0' && input[i + 1] <= '9') {
+                        activeOperand[0].exponent += input[i + 1];
+                        i += 1;
+                    }
+                }
+                continue;
+            }
 
             if (['+', '-', '*', '/'].includes(char)) {
                 if(!this.operand1?.[0]?.value && char === '-') {
@@ -90,6 +111,18 @@ class ImperialCalculator {
                 continue;
             } else {
                 //we are entering values
+
+                // If the active operand is in exponent-capture mode ('^' was the last structural input)
+                // and the character is a digit, append it to the exponent instead of the value.
+                if (
+                    char >= '0' && char <= '9' &&
+                    activeOperand.length > 0 &&
+                    activeOperand[0].exponent !== undefined
+                ) {
+                    activeOperand[0].exponent += char;
+                    continue;
+                }
+
                 if (!currentComponent || currentComponent.unit) {
                     //if there is no current component, or the current component already has a unit, we need to create a new component for the new value
                     const newComponent: Component = { value: null, unit: null };
@@ -139,6 +172,9 @@ class ImperialCalculator {
      */
     calculate(input?: string): string {
         if (input) {
+            this.operand1 = [];
+            this.operand2 = [];
+            this.operator = null;
             this.captureInput(input);
         }
         // console.log('Calculating with operand1:', this.operand1, 'operator:', this.operator, 'operand2:', this.operand2);
@@ -162,38 +198,72 @@ class ImperialCalculator {
             throw new Error('Invalid calculation: cannot do plus or minus operations with operands with units and without units');
         }
 
+        const operand1HasUnits = this.operandHasUnits(this.operand1);
+        const operand2HasUnits = this.operandHasUnits(this.operand2);
+        const operand1Exponent = this.getEffectiveOperandExponent(this.operand1);
+        const operand2Exponent = this.getEffectiveOperandExponent(this.operand2);
+        const operand1ExplicitExponent = this.getOperandExponent(this.operand1);
+        const operand2ExplicitExponent = this.getOperandExponent(this.operand2);
+
+        if ((!operand1HasUnits && operand1ExplicitExponent !== null) || (!operand2HasUnits && operand2ExplicitExponent !== null)) {
+            throw new Error('Not Supported: cannot process unitless numbers with exponents');
+        }
+
         if (
-            (this.operator === '*' || this.operator === '/') &&
-            this.operand1.some(component => component.unit !== null) &&
-            this.operand2.some(component => component.unit !== null)
+            (this.operator === '+' || this.operator === '-') &&
+            operand1HasUnits &&
+            operand2HasUnits &&
+            operand1Exponent !== operand2Exponent
         ) {
-            throw new Error('Not Supported: cannot do multiply or divide operations with two operands with units');
+            throw new Error('Invalid calculation: cannot do plus or minus operations with operands with different exponents');
         }
 
         const total1 = this.aggrateOperand(this.operand1);
         const total2 = this.aggrateOperand(this.operand2);
         let calculationResult: number;
+        let resultExponent: number | null = null;
         switch (this.operator) {
             case '+':
                 calculationResult = total1 + total2;
+                resultExponent = operand1HasUnits ? operand1Exponent : null;
                 break;
             case '-':
                 calculationResult = total1 - total2;
+                resultExponent = operand1HasUnits ? operand1Exponent : null;
                 break;
             case '*':
                 calculationResult = total1 * total2;
+                if (operand1HasUnits && operand2HasUnits) {
+                    resultExponent = (operand1Exponent ?? 1) + (operand2Exponent ?? 1);
+                } else if (operand1HasUnits) {
+                    resultExponent = operand1Exponent;
+                } else if (operand2HasUnits) {
+                    resultExponent = operand2Exponent;
+                }
                 break;
             case '/':
                 calculationResult = total1 / total2;
+                if (operand1HasUnits && operand2HasUnits) {
+                    resultExponent = (operand1Exponent ?? 1) - (operand2Exponent ?? 1);
+                } else if (operand1HasUnits) {
+                    resultExponent = operand1Exponent;
+                } else if (operand2HasUnits) {
+                    resultExponent = -(operand2Exponent ?? 1);
+                }
+
+                if (resultExponent !== null && resultExponent < 0) {
+                    throw new Error('Not Supported: cannot do divide operations resulting in a negative exponent');
+                }
+
                 break;
             default:
                 throw new Error('Invalid operator: ' + this.operator);
         }
 
         let result: string;
-        if (this.operand1.some(component => component.unit !== null) || this.operand2.some(component => component.unit !== null)) {
+        if ((operand1HasUnits || operand2HasUnits) && resultExponent !== 0) {
             //if either operand has units, it means the result should be in imperial units, we will convert the result in inches back to feet and inches for display
-            const resultOperand = this.inchesToOperand(calculationResult);
+            const resultOperand = this.inchesToOperand(calculationResult, resultExponent ?? 1);
 
             if (this.resultUnit === 'meters') {
                 this.toggleOperandUnits([resultOperand], 'meters'); //convert the result operand to meters if the result unit is set to meters
@@ -216,7 +286,9 @@ class ImperialCalculator {
      * Format operand for in-progress capture display, including value-only components.
      */
     operandToString(operand: Component[]): string {
-        let result = '';
+        const exponent = this.getEffectiveOperandExponent(operand);
+        const segments: string[] = [];
+
         for (const component of operand) {
             if (component.value !== null) {
                 let unitSymbol = '';
@@ -234,24 +306,31 @@ class ImperialCalculator {
                         unitSymbol = '';
                 }
                 // only render a single '-' in front of the result if the value is negative
-                result += (result && component.value.startsWith('-') ? component.value.substring(1) : component.value) + unitSymbol + ' ';
+                segments.push((segments.length && component.value.startsWith('-') ? component.value.substring(1) : component.value) + unitSymbol);
             }
         }
-        return result.trim();
+
+        const result = segments.join(' ');
+        if (exponent !== null && exponent > 1) {
+            return result + '^' + exponent;
+        }
+
+        return result;
     }
 
     /**
      * convert a number in inches to an operand array with feet and inches, for example 66 inches will be converted to [ { value: '5', unit: 'feet' }, { value: '6', unit: 'inches' } ]
      * supports negative numbers, for example -66 inches will be converted to [ { value: '-5', unit: 'feet' }, { value: '-6', unit: 'inches' } ]
      */
-    inchesToOperand(totalInches: number): Component[] {
+    inchesToOperand(totalInches: number, exponent = 1): Component[] {
         const isNegative = totalInches < 0;
         const absTotalInches = Math.abs(totalInches);
-        
-        const feet = Math.floor(absTotalInches / 12);
-        const inches = Math.round((absTotalInches % 12) * 10000) / 10000;
+
+        const feetUnitSize = Math.pow(FEET_TO_INCH, exponent);
+        const feet = Math.floor(absTotalInches / feetUnitSize);
+        const inches = Math.round((absTotalInches % feetUnitSize) * 10000) / 10000;
         const operand: Component[] = [];
-        
+
         if (feet > 0) {
             operand.push({ value: (isNegative ? -feet : feet).toString(), unit: 'feet' });
         }
@@ -261,6 +340,8 @@ class ImperialCalculator {
         if (operand.length === 0) {
             operand.push({ value: '0', unit: 'inches' });
         }
+
+        this.setOperandExponent(operand, exponent);
         return operand;
     }
 
@@ -284,19 +365,20 @@ class ImperialCalculator {
 
         //if the first component is negative, the entire operand is considered negative
         const isNegative = operand?.[0]?.value?.startsWith('-');
+        const exponent = this.getEffectiveOperandExponent(operand) ?? 1;
 
         let totalInches = 0;
         for (const component of operand) {
             if (component.value !== null && component.unit) {
                 switch (component.unit) {
                     case 'feet':
-                        totalInches += Math.abs(parseFloat(component.value) * 12);
+                        totalInches += Math.abs(parseFloat(component.value) * Math.pow(FEET_TO_INCH, exponent));
                         break;
                     case 'inches':
                         totalInches += Math.abs(parseFloat(component.value));
                         break;
                     case 'meters':
-                        totalInches += Math.abs(parseFloat(component.value) * 39.3701);
+                        totalInches += Math.abs(parseFloat(component.value) * Math.pow(METER_TO_INCH, exponent));
                         break;
                 }
             } else if (component.value !== null) {
@@ -315,6 +397,10 @@ class ImperialCalculator {
      */
     handleBack(): void {
         if (this.operand2.length > 0) {
+            if (this.trimOperandExponent(this.operand2)) {
+                return;
+            }
+
             const lastComponent = this.operand2[this.operand2.length - 1];
             if (lastComponent.unit) {
                 lastComponent.unit = null;
@@ -327,6 +413,10 @@ class ImperialCalculator {
         } else if (this.operator) {
             this.operator = null;
         } else if (this.operand1.length > 0) {
+            if (this.trimOperandExponent(this.operand1)) {
+                return;
+            }
+
             const lastComponent = this.operand1[this.operand1.length - 1];
             if (lastComponent.unit) {
                 lastComponent.unit = null;
@@ -354,20 +444,73 @@ class ImperialCalculator {
             }
 
             const totalInches = this.aggrateOperand(operand);
+            const exponent = this.getOperandExponent(operand);
+            const effectiveExponent = this.getEffectiveOperandExponent(operand) ?? 1;
 
             switch (targetUnit) {
                 case 'meters': {
-                    const totalMeters = Math.round((totalInches / 39.3701) * 10000) / 10000;
+                    const totalMeters = Math.round((totalInches / Math.pow(METER_TO_INCH, effectiveExponent)) * 10000) / 10000;
                     operand.length = 0; //clear the operand array
                     operand.push({ value: totalMeters.toString(), unit: 'meters' });
+                    this.setOperandExponent(operand, exponent);
                     break;
                 }
                 case 'inches':
                     operand.length = 0; //clear the operand array
-                    operand.push(...this.inchesToOperand(totalInches)); //convert inches to feet and inches components and push to operand array
+                    operand.push(...this.inchesToOperand(totalInches, effectiveExponent)); //convert inches to feet and inches components and push to operand array
                     break;
             }  
         }    
+    }
+
+    operandHasUnits(operand: Component[]): boolean {
+        return operand.some(component => component.unit !== null);
+    }
+
+    getOperandExponent(operand: Component[]): number | null {
+        const exponent = operand?.[0]?.exponent;
+        return exponent ? parseInt(exponent, 10) : null;
+    }
+
+    getEffectiveOperandExponent(operand: Component[]): number | null {
+        const exponent = this.getOperandExponent(operand);
+
+        if (exponent !== null) {
+            return exponent;
+        }
+
+        if (this.operandHasUnits(operand)) {
+            return 1;
+        }
+
+        return null;
+    }
+
+    setOperandExponent(operand: Component[], exponent: number | null): void {
+        if (operand.length === 0) {
+            return;
+        }
+
+        if (exponent !== null && exponent > 1) {
+            operand[0].exponent = exponent.toString();
+        } else {
+            delete operand[0].exponent;
+        }
+    }
+
+    trimOperandExponent(operand: Component[]): boolean {
+        if (operand.length === 0 || !operand[0].exponent) {
+            return false;
+        }
+
+        const trimmedExponent = operand[0].exponent.slice(0, -1);
+        if (trimmedExponent) {
+            operand[0].exponent = trimmedExponent;
+        } else {
+            delete operand[0].exponent;
+        }
+
+        return true;
     }
 }
 

@@ -179,16 +179,22 @@ class ImperialCalculator {
         }
         // console.log('Calculating with operand1:', this.operand1, 'operator:', this.operator, 'operand2:', this.operand2);
 
-        if (this.operand1.length === 0 || this.operator === null || this.operand2.length === 0) {
-            throw new Error('Invalid calculation: missing operand or operator');
+        if(this.operand1.length && !this.operand2.length && !this.operator) {
+            //Special case: if we only have operand1 and no operator or operand2, we can treat it as operand1 * 1, for example "5 feet" can be treated as "5 feet * 1"
+            this.operand2.push({value: '1', unit: null}); 
+            this.operator = '*';
         }
-
+        
         for(const operand of [this.operand1, this.operand2]) {
             // Special case: interpret a trailing unitless component as inches in feet-and-inches input.
             // Example: [5 feet, 6] should be treated as [5 feet, 6 inches].
             if (operand.length === 2 && operand[0].unit === 'feet' && operand[1].unit === null) {
                 operand[1].unit = 'inches';
             }
+        }
+
+        if (this.operand1.length === 0 || this.operator === null || this.operand2.length === 0) {
+            throw new Error('Invalid calculation: missing operand or operator');
         }
 
         if (

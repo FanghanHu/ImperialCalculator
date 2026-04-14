@@ -79,10 +79,6 @@ describe('calculate function', () => {
 });
 
 describe('calculate function errors and exceptions', () => {
-    test('throws when operator is missing', () => {
-        expect(() => calculator.calculate("5' 6\"")).toThrow('Invalid calculation: missing operand or operator');
-    });
-
     test('throws when second operand is missing', () => {
         expect(() => calculator.calculate("5' +")).toThrow('Invalid calculation: missing operand or operator');
     });
@@ -253,6 +249,12 @@ describe('Input capture', () => {
         const result = calculator.calculate("5'2 + 1'");
 
         expect(result).toBe("6' 2\"");
+    });
+
+    test('Special case: single operand calculation', () => {
+        const result = calculator.calculate(`20"`);
+
+        expect(result).toBe("1' 8\"");
     });
 });
 

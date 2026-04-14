@@ -53,13 +53,13 @@ describe('calculate function', () => {
     });
 
     test('add and minus operands with exponents', () => {
-        expect(calculator.calculate("1'^2 + 1'^2")).toBe("2'^2");
-        expect(calculator.calculate("2'^2 - 1'^2")).toBe("1'^2");
+        expect(calculator.calculate("1'^2 + 1'^2")).toBe("2'²");
+        expect(calculator.calculate("2'^2 - 1'^2")).toBe("1'²");
     });
     
     test('multiply and divide operands with exponents', () => {
-        expect(calculator.calculate("1'^2 * 1'^2")).toBe("1'^4");
-        expect(calculator.calculate("2'^4 / 1'^2")).toBe("2'^2");
+        expect(calculator.calculate("1'^2 * 1'^2")).toBe("1'⁴");
+        expect(calculator.calculate("2'^4 / 1'^2")).toBe("2'²");
     });
 
     test('divide two operands into 0 exponent should remove the unit', () => {
@@ -72,9 +72,9 @@ describe('calculate function', () => {
     });
 
     test('convert feet and inches with exponents', () => {
-        expect(calculator.calculate('200"^2 * 1')).toBe(`1' 56"^2`);
-        expect(calculator.calculate('20000"^3 * 1')).toBe(`11' 992"^3`);
-        expect(calculator.calculate('5m^2 * 1')).toBe(`53' 118.0239"^2`);
+        expect(calculator.calculate('200"^2 * 1')).toBe(`1' 56"²`);
+        expect(calculator.calculate('20000"^3 * 1')).toBe(`11' 992"³`);
+        expect(calculator.calculate('5m^2 * 1')).toBe(`53' 118.0239"²`);
     });
 });
 
@@ -88,7 +88,7 @@ describe('calculate function errors and exceptions', () => {
     });
 
     test('supports multiply with two unit operands', () => {
-        expect(calculator.calculate("5' * 2'")).toBe("10'^2");
+        expect(calculator.calculate("5' * 2'")).toBe("10'²");
     });
 
     // test('throws for divide with two unit operands', () => {

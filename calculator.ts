@@ -27,6 +27,7 @@ export interface Component {
 
 const METER_TO_INCH = 39.3701;
 const FEET_TO_INCH = 12;
+const SUPERSCRIPTS = '⁰¹²³⁴⁵⁶⁷⁸⁹';
 
 class ImperialCalculator {
     // an array to store components of the first operand, such as feet and inches, each component is an object with the value and unit. for example [ { value: '5', unit: 'feet' }, { value: '6', unit: 'inches' } ]
@@ -69,6 +70,21 @@ class ImperialCalculator {
                     while (i + 1 < input.length && input[i + 1] >= '0' && input[i + 1] <= '9') {
                         activeOperand[0].exponent += input[i + 1];
                         i += 1;
+                    }
+                }
+                continue;
+            }
+
+            if(SUPERSCRIPTS.includes(char)) {
+                // capture superscript as exponent for the current operand, for example "5'²" will be captured as operand1: [ { value: '5', unit: 'feet', exponent: '2' } ]
+                if(activeOperand.length === 0) {
+                    throw new Error('Invalid input: exponent symbol cannot be at the beginning of an operand');
+                } else {
+                    const exponentDigit = SUPERSCRIPTS.indexOf(char);
+                    if(!activeOperand[0].exponent) {
+                        activeOperand[0].exponent = exponentDigit.toString();
+                    } else {
+                        activeOperand[0].exponent += exponentDigit.toString();
                     }
                 }
                 continue;
@@ -300,7 +316,7 @@ class ImperialCalculator {
      * Format operand for in-progress capture display, including value-only components.
      */
     operandToString(operand: Component[]): string {
-        const exponent = this.getEffectiveOperandExponent(operand);
+        const exponent = operand?.[0]?.exponent;
         const segments: string[] = [];
 
         for (const component of operand) {
@@ -325,8 +341,12 @@ class ImperialCalculator {
         }
 
         const result = segments.join(' ');
-        if (exponent !== null && exponent > 1) {
-            return result + '^' + exponent;
+        if (exponent === '') {
+            //show a '^' symbol if we are in exponent-capture mode but no exponent digit has been captured yet, this gives users a visual feedback that they are inputting an exponent
+            return result + '^';
+        } else if (exponent != null && parseInt(exponent) > 1) {
+            //replace exponent number as superscripts
+            return result + exponent.replace(/\d/g, (m: string) => SUPERSCRIPTS[parseInt(m)]);
         }
 
         return result;

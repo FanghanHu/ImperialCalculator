@@ -39,7 +39,7 @@
         }
 
         .calculator-shell {
-            width: min(540px, 100%);
+            width: min(640px, 100%);
             background: var(--panel);
             border-radius: 24px;
             box-shadow: var(--shadow);
@@ -131,7 +131,7 @@
 
         .keypad-layout {
             display: grid;
-            grid-template-columns: 3fr 1.3fr 1.2fr;
+            grid-template-columns: 3fr 1.3fr 1.2fr 1.25fr;
             gap: 12px;
         }
 
@@ -162,6 +162,32 @@
             display: grid;
             justify-content: center;
             gap: 8px;
+        }
+
+        .fraction-grid {
+            display: grid;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .fraction-input {
+            width: 72px;
+            height: 42px;
+            border: 1px solid #c8dbf4;
+            border-radius: 10px;
+            padding: 0 8px;
+            text-align: center;
+            font: inherit;
+            font-size: 0.95rem;
+            color: var(--ink);
+            background: #ffffff;
+        }
+
+        .key.fraction {
+            background: linear-gradient(145deg, #e7f2ff, #d4e6ff);
+            color: #0d3d74;
+            height: 42px;
+            aspect-ratio: auto;
         }
 
         .key {
@@ -325,6 +351,18 @@
                     <button class="key equals" data-input="=">=</button>
                 </div>
             </div>
+
+            <div class="pad-block">
+                <div class="fraction-grid">
+                    <input id="fractionInput" class="fraction-input" type="number" inputmode="decimal" aria-label="Fraction value" value="1" />
+                    <button class="key fraction" data-fraction="2">x/2</button>
+                    <button class="key fraction" data-fraction="4">x/4</button>
+                    <button class="key fraction" data-fraction="8">x/8</button>
+                    <button class="key fraction" data-fraction="16">x/16</button>
+                    <button class="key fraction" data-fraction="32">x/32</button>
+                    <button class="key fraction" data-fraction="64">x/64</button>
+                </div>
+            </div>
         </section>
 
         <div id="operand1" hidden></div>
@@ -342,6 +380,19 @@
         const calculatorShell = document.querySelector('.calculator-shell');
         const expressionDisplay = document.getElementById('expressionDisplay');
         const toggleUnitsButton = document.getElementById('toggleUnitsButton');
+        const fractionInput = document.getElementById('fractionInput');
+
+        function addFraction(inputValue, fractionNumber) {
+            const fractionValue = parseFloat(inputValue) / fractionNumber;
+            if (isNaN(fractionValue)) {
+                return;
+            }
+
+            const currentComponent = imperialCalculator.operator ? imperialCalculator.operand2[imperialCalculator.operand2.length - 1] : imperialCalculator.operand1[imperialCalculator.operand1.length - 1];
+            
+            currentComponent.value = '' + Math.round((Math.floor(parseFloat(currentComponent.value)) + fractionValue) * 10000) / 10000;
+            renderCaptureState();
+        }
 
         function getCapturedExpression() {
             const displayOperator = imperialCalculator.operator ? imperialCalculator.operator.replace('*', '×').replace('/', '÷') : '';
@@ -410,6 +461,11 @@
         }
 
         calculatorShell.addEventListener('keydown', function(event) {
+            if(event.target.id === 'fractionInput') {
+                //do not capture input if we are entering a number for fraction
+                return;
+            }
+
             const validKeys = ['+', '-', '*', '/', "'", '"', 'm', '.', '=', '^'];
             const isDigit = event.key >= '0' && event.key <= '9';
             if (isDigit || validKeys.includes(event.key) || event.key === 'Enter') {
@@ -465,6 +521,12 @@
             button.addEventListener('click', function() {
                 imperialCalculator.handleBack();
                 renderCaptureState();
+            });
+        });
+
+        document.querySelectorAll('[data-fraction]').forEach(function(button) {
+            button.addEventListener('click', function() {
+                addFraction(fractionInput ? fractionInput.value : '', Number(button.dataset.fraction));
             });
         });
 

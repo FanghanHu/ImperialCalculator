@@ -183,6 +183,14 @@ class ImperialCalculator {
             throw new Error('Invalid calculation: missing operand or operator');
         }
 
+        for(const operand of [this.operand1, this.operand2]) {
+            // Special case: interpret a trailing unitless component as inches in feet-and-inches input.
+            // Example: [5 feet, 6] should be treated as [5 feet, 6 inches].
+            if (operand.length === 2 && operand[0].unit === 'feet' && operand[1].unit === null) {
+                operand[1].unit = 'inches';
+            }
+        }
+
         if (
             (this.operand1.some(component => component.unit !== null) && this.operand1.some(component => component.unit === null)) ||
             (this.operand2.some(component => component.unit !== null) && this.operand2.some(component => component.unit === null))

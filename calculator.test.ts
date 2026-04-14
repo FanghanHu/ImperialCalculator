@@ -247,6 +247,13 @@ describe('Input capture', () => {
             { value: '5', unit: 'meters', exponent: '2' }
         ]);
     });
+
+
+    test('Special case: interpret a trailing unitless component as inches in feet-and-inches input', () => {
+        const result = calculator.calculate("5'2 + 1'");
+
+        expect(result).toBe("6' 2\"");
+    });
 });
 
 describe('negative values', () => {
